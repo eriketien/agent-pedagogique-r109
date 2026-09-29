@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex">
 <style>html{color-scheme:light}body{margin:0}[hidden]{display:none!important}img{max-width:100%}</style>
-<title>Agent pédagogique R1.09 – Prototype</title>
+<title>Agent pédagogique R1.09 – Électronique</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
 <style>
@@ -128,11 +128,12 @@ select{font:inherit;padding:9px 10px;border-radius:10px;border:1.5px solid var(-
     <div class="progress" id="progress" aria-hidden="true"></div>
   </header>
   <main class="card" id="card"></main>
-  <p class="foot">Prototype – les indices sont écrits à l'avance. Dans l'application, l'agent les adaptera à l'erreur de l'étudiant. La progression est mémorisée sur cet appareil.</p>
+  <p class="foot" id="foot">Prototype – les indices sont écrits à l'avance. Dans l'application, l'agent les adaptera à l'erreur de l'étudiant. La progression est mémorisée sur cet appareil.</p>
   <div class="teacher" id="teacher"></div>
 </div>
 
 <script>
+const EDITION='etudiant'; const ETU=EDITION==='etudiant'; let ID=null, SENT=null, SENDMODE=false;
 (function(){
 const SVGNS='http://www.w3.org/2000/svg';
 const GEN={x:60,y:87,len:22,lx:36,ly:92};
@@ -412,6 +413,8 @@ function header(){
   C.steps.forEach((s,i)=>pr.appendChild($('span',{class:i<S.pos?'done':i===S.pos?'now':''})));
 }
 function render(){
+  if(ETU&&!ID){renderIdent();return}
+  if(ETU&&SENDMODE){renderSend();return}
   if(GR&&GR.active){renderGR();return}
   if(MODE==='alerts'){renderAlerts();return}
   if(MODE==='c22'){renderDiv();return}
@@ -670,7 +673,7 @@ function renderRem(){
     agent('On s’arrête là pour cette notion : ce n’est pas grave, certaines idées demandent une explication en direct. Ton enseignant va la reprendre avec toi au prochain TD. En attendant, tu peux finir les autres questions de ton circuit.');
     const mins=Math.max(1,Math.round((Date.now()-R.t0)/60000));
     const box=$('div',{class:'compline'});
-    box.appendChild($('span',{html:'<b>Aperçu du signalement enseignant</b>'}));box.appendChild($('span',{class:'score',text:'démo'}));
+    box.appendChild($('span',{html:'<b>'+(ETU?'Point à montrer à ton enseignant':'Aperçu du signalement enseignant')+'</b>'}));if(!ETU)box.appendChild($('span',{class:'score',text:'démo'}));
     box.appendChild($('span',{style:'grid-column:1/-1',html:fmt('Compétence : C1.1 – courant dans des dipôles en série<br>Erreur récurrente : confond série et branches différentes'+(ERRS.size?' (circuits '+[...ERRS].map(i=>i+1).join(', ')+')':'')+'<br>Questions courtes : '+R.wrongTotal+' erreurs sur '+R.total+' réponses, exemple guidé fait<br>Temps passé sur la remédiation : '+mins+' min')}));
     card.appendChild(box);
     card.appendChild($('div',{class:'btns'},[btn('Revenir au circuit',endRem)]));
@@ -1576,7 +1579,7 @@ function renderGR(){
     if(!R.alerted){R.alerted=true;ALERTS.push({date:new Date().toLocaleString('fr-FR'),comp:P.comp,point:P.title,errs:R.wrongTotal,total:R.total,mins});saveProg();}
     agent('On s’arrête là pour ce point : ce n’est pas grave, certaines idées demandent une explication en direct. Ton enseignant va le reprendre avec toi au prochain TD.');
     const box=$('div',{class:'compline'});
-    box.appendChild($('span',{html:'<b>Signalement envoyé à l’enseignant</b>'}));box.appendChild($('span',{class:'score',text:'démo'}));
+    box.appendChild($('span',{html:'<b>'+(ETU?'Point à montrer à ton enseignant':'Signalement envoyé à l’enseignant')+'</b>'}));if(!ETU)box.appendChild($('span',{class:'score',text:'démo'}));
     box.appendChild($('span',{style:'grid-column:1/-1',html:fmt('Compétence : '+P.comp+' – '+P.title+'<br>Questions courtes : '+R.wrongTotal+' erreurs sur '+R.total+' réponses, exemple guidé fait<br>Temps passé : '+mins+' min')}));
     card.appendChild(box);
     card.appendChild($('div',{class:'btns'},[btn('Continuer',endGR)]));return;
@@ -1801,14 +1804,14 @@ PH.ch4={h1:'Diode et LED',code:'Ch. 4',cname:'Modèles de la diode, point de fon
 
 /* ================= PARCOURS, VERROUS, MÉMOIRE ================= */
 const VALID={conv:false,ohm:false,req:false,mail:false,divid:false,div:false,sup:false,mil:false}; let TEACHER=false, NOTICE='';
-const STORE='agent-pedago-r109-ch1';
+const STORE=ETU?'agent-pedago-r109-etu':'agent-pedago-r109-ch1';
 function totConv(){const t={'C1.1':[0,0],'C1.2':[0,0]};RESULTS.filter(Boolean).forEach(r=>Object.keys(r).forEach(c=>{t[c][0]+=r[c][0];t[c][1]+=r[c][1]}));return t}
 function checkConv(){if(RESULTS.every(Boolean)){const t=totConv();if(Object.keys(t).every(c=>t[c][0]/t[c][1]>=0.8))VALID.conv=true;}}
 const firstOhm=()=>firstAct('ohm');
 function saveProg(){try{localStorage.setItem(STORE,JSON.stringify({RESULTS,OHMRES,REQRES,MAILRES,DIVRES,DIVCRES,SUPRES,MILRES,VALID,ERRS:[...ERRS],REMDONE,TEACHER,ERRT:Object.fromEntries(Object.entries(ERRT).map(([k,v])=>[k,[...v]])),RDONE,ALERTS}))}catch(e){}}
 function loadProg(){try{const d=JSON.parse(localStorage.getItem(STORE)||'null');if(!d)return;
   (d.RESULTS||[]).forEach((r,i)=>{if(i<RESULTS.length)RESULTS[i]=r});Object.assign(OHMRES,d.OHMRES||{});Object.assign(REQRES,d.REQRES||{});Object.assign(DIVRES,d.DIVRES||{});Object.assign(MAILRES,d.MAILRES||{});Object.assign(DIVCRES,d.DIVCRES||{});Object.assign(SUPRES,d.SUPRES||{});Object.assign(MILRES,d.MILRES||{});Object.assign(VALID,d.VALID||{});
-  (d.ERRS||[]).forEach(x=>ERRS.add(x));REMDONE=!!d.REMDONE;TEACHER=!!d.TEACHER;Object.entries(d.ERRT||{}).forEach(([k,v])=>ERRT[k]=new Set(v));Object.assign(RDONE,d.RDONE||{});(d.ALERTS||[]).forEach(a=>ALERTS.push(a));checkConv();checkAct('ohm');checkAct('req');checkAct('mail');checkAct('div');checkAct('sup');checkAct('mil');}catch(e){}}
+  (d.ERRS||[]).forEach(x=>ERRS.add(x));REMDONE=!!d.REMDONE;TEACHER=!ETU&&!!d.TEACHER;Object.entries(d.ERRT||{}).forEach(([k,v])=>ERRT[k]=new Set(v));Object.assign(RDONE,d.RDONE||{});(d.ALERTS||[]).forEach(a=>ALERTS.push(a));checkConv();checkAct('ohm');checkAct('req');checkAct('mail');checkAct('div');checkAct('sup');checkAct('mil');}catch(e){}}
 const PREV={ohm:'conv',req:'ohm',mail:'req',c22:'mail',div:'divid',sup:'div',mil:'sup',ch4:'mil'};
 const unlocked=m=>m==='conv'||TEACHER||VALID[PREV[m]];
 const LOCK='<svg viewBox="0 0 12 12" aria-hidden="true"><rect x="2" y="5.5" width="8" height="5.5" rx="1" fill="currentColor"/><path d="M4 5.5V4a2 2 0 0 1 4 0v1.5" fill="none" stroke="currentColor" stroke-width="1.4"/></svg>';
@@ -1819,6 +1822,7 @@ function modes(){
   L.forEach(x=>{const u=unlocked(x[0]);
     const b=$('button',{class:'tab'+(u?'':' locked')+(x[2]?' done':''),type:'button','aria-current':MODE===x[0]?'true':'false','aria-disabled':u?'false':'true',html:(u?'':LOCK)+x[1]});
     b.addEventListener('click',()=>{
+      SENDMODE=false;
       if(!u){NOTICE=LOCKMSG[x[0]];render();return}
       NOTICE='';
       if(ACTS[x[0]]){if(LAST[x[0]]){O=LAST[x[0]];MODE=x[0];render();}else startAct(x[0],firstAct(x[0]));}else{MODE=x[0];render();}
@@ -1828,9 +1832,92 @@ function modes(){
   const n=document.getElementById('notice');n.textContent=NOTICE;n.hidden=!NOTICE;
   teacherBar();
 }
+/* ================= VERSION ÉTUDIANTS : IDENTIFICATION ET ENVOI DU BILAN ================= */
+const MAILTO='erik.etien@univ-poitiers.fr', IDKEY='agent-pedago-r109-id';
+
+try{const d=JSON.parse(localStorage.getItem(IDKEY)||'null');if(d){ID=d.id||null;SENT=d.sent||null;}}catch(e){}
+function saveId(){try{localStorage.setItem(IDKEY,JSON.stringify({id:ID,sent:SENT}))}catch(e){}}
+const pct=(a,b)=>b?Math.round(100*a/b)+' %':'–';
+function bilanText(){
+  const L=[],now=new Date();
+  L.push('Bilan R1.09 – Électronique');
+  L.push('Étudiant : '+ID.prenom+' '+ID.nom.toUpperCase()+' – groupe '+ID.groupe);
+  L.push('Date : '+now.toLocaleString('fr-FR'));
+  L.push('','COMPÉTENCES');
+  const nc=RESULTS.filter(Boolean).length,t=totConv();
+  L.push('- C1.1–C1.2 Conventions : '+(VALID.conv?'VALIDÉE':nc?'en cours':'non commencée')+(nc?' – circuits '+nc+'/4, C1.1 '+pct(...t['C1.1'])+', C1.2 '+pct(...t['C1.2']):''));
+  const act=k=>{const A=ACTS[k],s=testScore(A),ex=A.list.filter((e,i)=>!e.test&&A.res[i]).length,nex=A.list.filter(e=>!e.test).length;
+    const st=VALID[k]?'VALIDÉE':s.done||ex?'en cours':'non commencée';
+    L.push('- '+A.bilanT.replace('Bilan ','')+' : '+st+(ex||s.done?' – exercices '+ex+'/'+nex+', tests '+s.done+'/'+s.all+(s.done?' ('+pct(s.ok,s.n)+' du premier coup)':''):''));};
+  ['ohm','req','mail'].forEach(act);
+  const r=DIVRES.t001;L.push('- C2.3 · Reconnaître un diviseur : '+(VALID.divid?'VALIDÉE':r?'en cours':'non commencée')+(r?' – '+pct(r[0],r[1]):''));
+  ['div','sup','mil'].forEach(act);
+  const ER=Object.entries(ERRT).filter(([k,v])=>v.size>=2&&PACKS[k]);
+  L.push('','ERREURS RÉCURRENTES'+(ER.length||ERRS.size>=2?'':' : aucune'));
+  if(ERRS.size>=2)L.push('- C1.1 · Courants dans des dipôles en série ('+ERRS.size+' circuits)');
+  ER.forEach(([k,v])=>L.push('- '+PACKS[k].comp+' · '+PACKS[k].title+' ('+v.size+' exercices)'));
+  const RD=Object.keys(RDONE).filter(k=>PACKS[k]);
+  L.push('','REMÉDIATIONS SUIVIES'+(RD.length||REMDONE?'':' : aucune'));
+  if(REMDONE)L.push('- C1.1 · Courants dans des dipôles en série');
+  RD.forEach(k=>L.push('- '+PACKS[k].comp+' · '+PACKS[k].title));
+  L.push('','POINTS BLOQUANTS'+(ALERTS.length?'':' : aucun'));
+  ALERTS.forEach(a=>L.push('- '+a.comp+' · '+a.point+' ('+a.date+', '+a.errs+' erreurs sur '+a.total+' réponses, '+a.mins+' min)'));
+  const code={v:1,id:ID,d:now.toISOString(),V:VALID,c:RESULTS,
+    r:Object.fromEntries(Object.keys(ACTS).map(k=>[k,Object.fromEntries(Object.entries(ACTS[k].res).map(([i,x])=>[ACTS[k].list[i].id.replace('R109-',''),x]))])),
+    t:DIVRES.t001||null,e:Object.fromEntries(Object.entries(ERRT).map(([k,v])=>[k,v.size])),s:ERRS.size,rd:[...RD,...(REMDONE?['serie']:[])],a:ALERTS.length};
+  L.push('','Code (pour le tableau de bord, ne pas modifier) :','R109:'+btoa(unescape(encodeURIComponent(JSON.stringify(code)))));
+  return L.join('\n');
+}
+function subject(){return 'Bilan R1.09 – '+ID.prenom+' '+ID.nom.toUpperCase()+' – '+ID.groupe}
+function sendMail(){
+  const body=bilanText();
+  SENT=new Date().toLocaleString('fr-FR');saveId();SENDMODE=true;
+  location.href='mailto:'+MAILTO+'?subject='+encodeURIComponent(subject())+'&body='+encodeURIComponent(body);
+  renderSend();
+}
+function renderSend(){
+  modes();const set=(i,t)=>document.getElementById(i).textContent=t;
+  set('h1','Envoyer mes résultats');set('exid','R109 · Bilan');set('stars','');set('cname',ID.prenom+' '+ID.nom.toUpperCase()+' – groupe '+ID.groupe);
+  document.getElementById('tabs').innerHTML='';document.getElementById('progress').innerHTML='';
+  const card=document.getElementById('card');card.innerHTML='';
+  card.appendChild($('p',{class:'agent',text:SENT?'Ta messagerie a dû s’ouvrir avec un message déjà rempli pour ton enseignant : vérifie-le et appuie sur « Envoyer ». Tu peux renvoyer ton bilan quand tu veux, le plus récent compte.':'Ton bilan va être préparé dans un message adressé à ton enseignant. Relis-le puis appuie sur « Envoyer » dans ta messagerie.'}));
+  const pre=$('pre',{style:'white-space:pre-wrap;word-break:break-word;font-size:12px;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px;max-height:260px;overflow:auto;margin:0',text:bilanText().replace(/\nCode \(pour[\s\S]*$/,'')});
+  card.appendChild(pre);
+  const msg=$('p',{class:'help',text:'Si ta messagerie ne s’ouvre pas : copie le bilan et envoie-le par courriel à '+MAILTO+'.'});
+  const copy=$('button',{class:'btn ghost',type:'button',text:'Copier le bilan',onclick:async()=>{
+    const txt=subject()+'\n\n'+bilanText();let ok=false;
+    try{await navigator.clipboard.writeText(txt);ok=true}catch(e){}
+    msg.textContent=ok?'Bilan copié. Colle-le dans un courriel à '+MAILTO+'.':'La copie automatique n’a pas marché : sélectionne le texte ci-dessus à la main.';}});
+  card.appendChild($('div',{class:'btns'},[$('button',{class:'btn primary',type:'button',text:SENT?'Renvoyer par courriel':'Envoyer par courriel',onclick:sendMail}),copy]));
+  card.appendChild(msg);
+  card.appendChild($('div',{class:'btns'},[$('button',{class:'btn ghost',type:'button',text:'Revenir aux exercices',onclick:()=>{SENDMODE=false;render();window.scrollTo({top:0});}})]));
+  if(SENT)card.appendChild($('p',{class:'help',text:'Dernier envoi préparé le '+SENT+'.'}));
+  teacherBar();
+}
+function renderIdent(){
+  document.getElementById('modes').innerHTML='';const set=(i,t)=>document.getElementById(i).textContent=t;
+  set('h1','Bienvenue');set('exid','R109 · Électronique');set('stars','');set('cname','Avant de commencer');
+  document.getElementById('tabs').innerHTML='';document.getElementById('progress').innerHTML='';document.getElementById('notice').hidden=true;
+  const card=document.getElementById('card');card.innerHTML='';
+  card.appendChild($('p',{class:'agent',text:'Je suis ton agent pour l’électronique (R1.09). Je vais te proposer des exercices chapitre par chapitre et t’aider quand tu bloques. Indique ton nom : il servira uniquement à envoyer ton bilan à ton enseignant.'}));
+  const f=(lab,k,ph)=>{const i=$('input',{type:'text',autocomplete:k==='groupe'?'off':(k==='nom'?'family-name':'given-name'),placeholder:ph,style:'font:inherit;font-size:17px;padding:10px 12px;border-radius:10px;border:1.5px solid var(--line);background:var(--surface);color:var(--ink);min-height:46px;width:100%;box-sizing:border-box'});
+    if(ID)i.value=ID[k];card.appendChild($('label',{style:'display:grid;gap:4px;font-weight:600'},[$('span',{text:lab}),i]));return i};
+  const p=f('Prénom','prenom',''),n=f('Nom','nom',''),g=f('Groupe de TD','groupe','ex. 1A');
+  const err=$('p',{class:'fb bad',hidden:''});
+  card.appendChild(err);
+  card.appendChild($('div',{class:'btns'},[$('button',{class:'btn primary',type:'button',text:'Commencer',onclick:()=>{
+    const v=[p,n,g].map(x=>x.value.trim());
+    if(v.some(x=>!x)){err.textContent='Remplis les trois champs.';err.hidden=false;return}
+    ID={prenom:v[0],nom:v[1],groupe:v[2]};saveId();document.getElementById('foot').hidden=false;render();window.scrollTo({top:0});}})]));
+  document.getElementById('foot').hidden=true;document.getElementById('teacher').innerHTML='';
+}
 let RESETASK=false;
 function teacherBar(){
   const t=document.getElementById('teacher');t.innerHTML='';
+  if(ETU){if(!ID||SENDMODE)return;
+    t.appendChild($('button',{type:'button','aria-pressed':'true',text:'Envoyer mes résultats',onclick:()=>{SENDMODE=true;NOTICE='';render();window.scrollTo({top:0});}}));
+    t.appendChild($('button',{type:'button',text:ID.prenom+' '+ID.nom+' · '+ID.groupe+' – modifier',onclick:()=>{renderIdent();window.scrollTo({top:0});}}));
+    return;}
   t.appendChild($('button',{type:'button','aria-pressed':TEACHER?'true':'false',text:TEACHER?'Mode enseignant : activé':'Mode enseignant',onclick:()=>{TEACHER=!TEACHER;NOTICE='';saveProg();render();}}));
   if(TEACHER){
     t.appendChild($('button',{type:'button','aria-pressed':MODE==='alerts'?'true':'false',text:'Remédiations et signalements ('+ALERTS.length+')',onclick:()=>{MODE='alerts';NOTICE='';render();window.scrollTo({top:0});}}));
@@ -1842,6 +1929,7 @@ function teacherBar(){
     t.appendChild(b);
   }
 }
+if(ETU){document.getElementById('foot').textContent='Ta progression est mémorisée sur cet appareil et dans ce navigateur : utilise toujours le même pour continuer. Si tu bloques, parles-en à ton enseignant en TD.';document.title='Agent pédagogique R1.09 – Électronique';}
 loadProg();
 fresh(Math.max(0,RESULTS.findIndex(r=>!r)));
 if(VALID.mil){MODE='ch4';render();}
